@@ -111,8 +111,6 @@ contract LockchainAlpha is Ownable, Pausable {
         require(now < refundDeadline);
         require(!bookings[bookingId].isActive);
 
-        bookingIds.push(bookingId);
-
         bookings[bookingId] = Reservation({
             reserverAddress: reserverAddress,
             costLOC: reservationCostLOC,
@@ -121,6 +119,8 @@ contract LockchainAlpha is Ownable, Pausable {
             bookingArrayIndex: bookingIds.length,
             isActive: true
         });
+
+        bookingIds.push(bookingId);
 
         assert(LOCTokenContract.transferFrom(reserverAddress, msg.sender, reservationCostLOC));
 
