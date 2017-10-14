@@ -19,6 +19,11 @@ const util = {
     let timestamp = +date;
     timestamp = Math.ceil(timestamp / 1000);
     return timestamp;
+  },
+
+  toBytes32: (i) => {
+    const stringed = "0000000000000000000000000000000000000000000000000000000000000000" + i.toString(16);
+    return "0x" + stringed.substring(stringed.length - 64, stringed.length);
   }
 }
 

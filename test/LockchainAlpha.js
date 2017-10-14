@@ -3,6 +3,7 @@ const MintableToken = artifacts.require("./tokens/MintableToken.sol");
 const util = require('./util');
 const expectThrow = util.expectThrow;
 const getTimestampPlusSeconds = util.getTimestampPlusSeconds;
+const toBytes32 = util.toBytes32;
 
 contract('LockchainAlpha', function (accounts) {
 
@@ -19,7 +20,7 @@ contract('LockchainAlpha', function (accounts) {
   const _reserverAmountEnough = _reservationCost * 2;
   const _reserverAmountNotEnough = _reservationCost / 2;
 
-  const _reservationBookingId = "5a9d0e1a87";
+  const _reservationBookingId = toBytes32("5a9d0e1a87");
 
   xdescribe("constructor", () => {
     beforeEach(async function () {
@@ -84,7 +85,17 @@ contract('LockchainAlpha', function (accounts) {
       assert.isTrue(result[5], "The reservation was not active");
     })
 
-    xit("should append to the indexes array and set the last element correctly", async function () {})
+    it("should append to the indexes array and set the last element correctly", async function () {
+      await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+        from: _owner
+      });
+      let result = await LAInstance.bookings.call(_reservationBookingId);
+      let result1 = await LAInstance.bookingIds.call(0);
+      assert.strictEqual(result1, _reservationBookingId, "The reservation index was not set correctly");
+      let result2 = await LAInstance.bookingIds.call(result[4].toNumber());
+      assert.strictEqual(result2, _reservationBookingId, "The reservation index was not set correctly");
+
+    })
 
     xit("should change the LOC balances correctly", async function () {})
 
