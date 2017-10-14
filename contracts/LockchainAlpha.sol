@@ -17,6 +17,7 @@ contract LockchainAlpha is Ownable, Pausable {
         uint refundDeadline;
         uint refundAmountLOC;
         uint bookingArrayIndex;
+        bool isActive;
     }
 
     function LockchainAlpha(address locTokenContractAddress) public {
@@ -25,8 +26,63 @@ contract LockchainAlpha is Ownable, Pausable {
 
     ERC20 LOCTokenContract;
 
-    uint[] public bookingIds;
-    mapping (uint => Reservation) public bookings;
+    bytes32[] public bookingIds;
+    mapping (bytes32 => Reservation) public bookings;
+    
+
+    /**
+     * @dev modifier ensuring that the modified method is only called on active reservations
+     * @param bookingId - the identifier of the reservation
+     */
+    modifier onlyActive(bytes32 bookingId) {
+        require(bookingId != 0);
+        Reservation storage r = bookings[bookingId];
+        require(r.isActive);
+        _;
+    }
+
+    /**
+     * @dev modifier ensuring that the modified method is only called by the reserver in the booking
+     * @param bookingId - the identifier of the reservation
+     */
+    modifier onlyReserver(bytes32 bookingId) {
+        require(bookingId != 0);
+        Reservation storage r = bookings[bookingId];
+        require(r.reserverAddress == msg.sender);
+        _;
+    }
+
+    /**
+     * @dev modifier ensuring that the modified method is only executed before the refund deadline
+     * @param bookingId - the identifier of the reservation
+     */
+    modifier onlyBeforeDeadline(bytes32 bookingId) {
+        require(bookingId != 0);
+        Reservation storage r = bookings[bookingId];
+        require(now < r.refundDeadline);
+        _;
+    }
+
+     /**
+     * @dev modifier ensuring that the modified method is only executed after the refund deadline
+     * @param bookingId - the identifier of the reservation
+     */
+    modifier onlyAfterDeadline(bytes32 bookingId) {
+        require(bookingId != 0);
+        Reservation storage r = bookings[bookingId];
+        require(now > r.refundDeadline);
+        _;
+    }
+
+    /**
+     * @dev function to ensure complete unlinking of booking from the mapping and array
+     * @notice it swaps the last element with the unlinked one and marks it in the mapping
+     * @notice it marks the unlinked element as inactive
+     * @param bookingId - the identifier of the reservation
+     */
+    function unlinkBooking(bytes32 bookingId) private {
+        // TODO
+    }
     
 
     /**
@@ -38,7 +94,7 @@ contract LockchainAlpha is Ownable, Pausable {
      * @param refundDeadline - the last date the user can ask for refund
      * @param refundAmountLOC - how many tokens the refund is
      */
-    function reserve(uint bookingId, 
+    function reserve(bytes32 bookingId, 
                     uint reservationCostLOC,
                     address reserverAddress, 
                     uint refundDeadline, 
@@ -56,7 +112,8 @@ contract LockchainAlpha is Ownable, Pausable {
             costLOC: reservationCostLOC,
             refundDeadline: refundDeadline,
             refundAmountLOC: refundAmountLOC,
-            bookingArrayIndex: bookingIds.length
+            bookingArrayIndex: bookingIds.length,
+            isActive: true
         });
 
         assert(LOCTokenContract.transferFrom(reserverAddress, msg.sender, reservationCostLOC));
@@ -64,16 +121,23 @@ contract LockchainAlpha is Ownable, Pausable {
         return true;
     }
     
-    function cancelBooking() public {
-        refund();
+    /**
+     * @dev called by the reserver to cancel his/her booking
+     * @param bookingId - the identifier of the reservation
+     */
+    function cancelBooking(bytes32 bookingId) onlyActive(bookingId) onlyReserver(bookingId) onlyBeforeDeadline(bookingId) public returns(bool) {
+        uint locToBeRefunded = bookings[bookingId].refundAmountLOC;
+        unlinkBooking(bookingId);
+        require(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
+        return true;
     }
     
-    function refund() private {
-        
-    }
-    
-    function withdraw() public onlyOwner {
-        
+    /**
+     * @dev called by owner to make LOC withdrawal for this reservation
+     * @param bookingId - the identifier of the reservation
+     */
+    function withdraw(bytes32 bookingId) onlyActive(bookingId)  onlyAfterDeadline(bookingId) onlyOwner public {
+        // TODO
     }
     
 }
