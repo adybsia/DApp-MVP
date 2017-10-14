@@ -28,7 +28,7 @@ contract LockchainAlpha is Ownable, Pausable {
         LOCTokenContract = ERC20(locTokenContractAddress);
     }
 
-    ERC20 LOCTokenContract;
+    ERC20 public LOCTokenContract;
 
     bytes32[] public bookingIds;
     mapping (bytes32 => Reservation) public bookings;
