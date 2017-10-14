@@ -11,6 +11,10 @@ import './tokens/ERC20.sol';
  */
 contract LockchainAlpha is Ownable, Pausable {
 
+    event LogReservation(bytes32 bookingId, address reserverAddress, uint costLOC, uint refundDeadline, uint refundAmountLOC);
+    event LogCancelation(bytes32 bookingId, address reserverAddress, uint refundedAmountLOC);
+    event LogWithdrawal(bytes32 bookingId, uint withdrawAmountLOC);
+
     struct Reservation {
         address reserverAddress;
         uint costLOC;
@@ -116,6 +120,8 @@ contract LockchainAlpha is Ownable, Pausable {
 
         assert(LOCTokenContract.transferFrom(reserverAddress, msg.sender, reservationCostLOC));
 
+        LogReservation(bookingId, reserverAddress, reservationCostLOC, refundDeadline, refundAmountLOC);
+
         return true;
     }
     
@@ -129,6 +135,7 @@ contract LockchainAlpha is Ownable, Pausable {
         uint locToBeRefunded = bookings[bookingId].refundAmountLOC;
         unlinkBooking(bookingId);
         require(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
+        LogCancelation(bookingId, bookings[bookingId].reserverAddress, locToBeRefunded);
         return true;
     }
     
@@ -142,6 +149,7 @@ contract LockchainAlpha is Ownable, Pausable {
         uint locToBeWithdrawn = bookings[bookingId].costLOC;
         unlinkBooking(bookingId);
         require(LOCTokenContract.transfer(owner, locToBeWithdrawn));
+        LogWithdrawal(bookingId, locToBeWithdrawn);
         return true;
     }
     
