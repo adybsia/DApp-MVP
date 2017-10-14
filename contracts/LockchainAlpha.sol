@@ -109,6 +109,7 @@ contract LockchainAlpha is Ownable, Pausable {
         public onlyOwner whenNotPaused returns(bool success) 
     {
         require(now < refundDeadline);
+        require(!bookings[bookingId].isActive);
 
         bookingIds.push(bookingId);
 
