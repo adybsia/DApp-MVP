@@ -4,6 +4,11 @@ import './Ownable.sol';
 import './Pausable.sol';
 import './tokens/ERC20.sol';
 
+/**
+ * @title LockchainAlpha
+ * @dev Contract for the Alpha version of the Lockchain service. 
+ * Allows for booking properties and withdrawal and refund of reservation
+ */
 contract LockchainAlpha is Ownable, Pausable {
 
     struct Reservation {
@@ -24,6 +29,15 @@ contract LockchainAlpha is Ownable, Pausable {
     mapping (uint => Reservation) public bookings;
     
 
+    /**
+     * @dev called by the owner of the contract to make a reservation and withdraw LOC from the user account
+     * @notice the reservator has to approve enough allowance before calling this
+     * @param bookingId - the identifier of the reservation
+     * @param reservationCostLOC - the cost of the reservation
+     * @param reserverAddress - who is reserving the property
+     * @param refundDeadline - the last date the user can ask for refund
+     * @param refundAmountLOC - how many tokens the refund is
+     */
     function reserve(uint bookingId, 
                     uint reservationCostLOC,
                     address reserverAddress, 
@@ -62,7 +76,4 @@ contract LockchainAlpha is Ownable, Pausable {
         
     }
     
-    function hashAddress(address addressToHash) public constant returns(bytes32 addressHash) {
-        return keccak256(addressToHash);
-    }
 }
