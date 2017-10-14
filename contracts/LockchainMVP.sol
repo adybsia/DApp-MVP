@@ -27,15 +27,14 @@ contract LockchainMVP is Pausable {
                   public 
                   returns(bool success)
     {
-        uint bookingArrayIndex = bookingIds.length + 1;
-        bookingIds[bookingArrayIndex] = bookingId;
+        bookingIds.push(bookingId);
         
         bookings[bookingId] = Booking({
             reserverAddressHash: reserverAddressHash,
             deadlineRefund: deadlineRefund,
             refundAmount: refundAmount,
             costAmount: costAmount,
-            bookingArrayIndex: bookingArrayIndex
+            bookingArrayIndex: bookingIds.length
         });
 
         return true;
