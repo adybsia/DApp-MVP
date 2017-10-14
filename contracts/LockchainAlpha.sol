@@ -3,6 +3,7 @@ pragma solidity ^0.4.15;
 import './Ownable.sol';
 import './Pausable.sol';
 import './tokens/ERC20.sol';
+import './math/SafeMath.sol';
 
 /**
  * @title LockchainAlpha
@@ -10,6 +11,7 @@ import './tokens/ERC20.sol';
  * Allows for booking properties and withdrawal and refund of reservation
  */
 contract LockchainAlpha is Ownable, Pausable {
+    using SafeMath for uint256;
 
     event LogReservation(bytes32 bookingId, address reserverAddress, uint costLOC, uint refundDeadline, uint refundAmountLOC);
     event LogCancelation(bytes32 bookingId, address reserverAddress, uint refundedAmountLOC);
@@ -106,6 +108,7 @@ contract LockchainAlpha is Ownable, Pausable {
         (bytes32 bookingId, uint reservationCostLOC, address reserverAddress, uint refundDeadline, uint refundAmountLOC) 
         public onlyOwner whenNotPaused returns(bool success) 
     {
+        require(now < refundDeadline);
 
         bookingIds.push(bookingId);
 
@@ -133,8 +136,12 @@ contract LockchainAlpha is Ownable, Pausable {
         whenNotPaused onlyReserver(bookingId) onlyActive(bookingId) onlyBeforeDeadline(bookingId) public returns(bool) 
     {
         uint locToBeRefunded = bookings[bookingId].refundAmountLOC;
+        uint serviceFee = bookings[bookingId].costLOC.sub(locToBeRefunded);
         unlinkBooking(bookingId);
-        require(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
+        assert(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
+        if (serviceFee > 0) {
+            assert(LOCTokenContract.transfer(owner, serviceFee));
+        }
         LogCancelation(bookingId, bookings[bookingId].reserverAddress, locToBeRefunded);
         return true;
     }
@@ -148,7 +155,7 @@ contract LockchainAlpha is Ownable, Pausable {
     {
         uint locToBeWithdrawn = bookings[bookingId].costLOC;
         unlinkBooking(bookingId);
-        require(LOCTokenContract.transfer(owner, locToBeWithdrawn));
+        assert(LOCTokenContract.transfer(owner, locToBeWithdrawn));
         LogWithdrawal(bookingId, locToBeWithdrawn);
         return true;
     }
