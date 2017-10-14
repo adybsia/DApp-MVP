@@ -3,7 +3,7 @@ pragma solidity 0.4.17;
 import './Pausable.sol';
 
 contract LockchainMVP is Pausable {
-    
+
     struct Booking {
         bytes32 reserverAddressHash;
         uint deadlineRefund;
@@ -13,10 +13,32 @@ contract LockchainMVP is Pausable {
     }
 
     uint[] public bookingIds;
-    mapping (uint => Booking) Bookings;
+    mapping (uint => Booking) bookings;
     
-    function book() public {
+    function LockchainMVP() {
+
+    }
+
+    function book(uint bookingId, 
+                  bytes32 reserverAddressHash, 
+                  uint deadlineRefund, 
+                  uint refundAmount, 
+                  uint costAmount) 
+                  public 
+                  returns(bool success)
+    {
+        uint bookingArrayIndex = bookingIds.length + 1;
+        bookingIds[bookingArrayIndex] = bookingId;
         
+        bookings[bookingId] = Booking({
+            reserverAddressHash: reserverAddressHash,
+            deadlineRefund: deadlineRefund,
+            refundAmount: refundAmount,
+            costAmount: costAmount,
+            bookingArrayIndex: bookingArrayIndex
+        });
+
+        return true;
     }
     
     function cancelBooking() public {
@@ -33,7 +55,7 @@ contract LockchainMVP is Pausable {
         
     }
     
-    function hashAddress() public constant returns(bytes32 addressHash) {
-        
+    function hashAddress(address addressToHash) public constant returns(bytes32 addressHash) {
+        return keccak256(addressToHash);
     }
 }
