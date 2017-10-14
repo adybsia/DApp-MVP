@@ -11,6 +11,14 @@ const util = {
       return
     }
     assert.fail('Expected throw not received')
+  },
+
+  getTimestampPlusSeconds: (seconds) => {
+    let date = new Date();
+    date.setSeconds(date.getSeconds() + seconds)
+    let timestamp = +date;
+    timestamp = Math.ceil(timestamp / 1000);
+    return timestamp;
   }
 }
 
