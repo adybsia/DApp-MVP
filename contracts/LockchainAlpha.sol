@@ -81,7 +81,11 @@ contract LockchainAlpha is Ownable, Pausable {
      * @param bookingId - the identifier of the reservation
      */
     function unlinkBooking(bytes32 bookingId) private {
-        // TODO
+        bytes32 lastId = bookingIds[bookingIds.length-1];
+        bookingIds[bookings[bookingId].bookingArrayIndex] = lastId;
+        bookingIds.length--;
+        bookings[lastId].bookingArrayIndex = bookings[bookingId].bookingArrayIndex;
+        bookings[bookingId].isActive = false;
     }
     
 
@@ -94,15 +98,9 @@ contract LockchainAlpha is Ownable, Pausable {
      * @param refundDeadline - the last date the user can ask for refund
      * @param refundAmountLOC - how many tokens the refund is
      */
-    function reserve(bytes32 bookingId, 
-                    uint reservationCostLOC,
-                    address reserverAddress, 
-                    uint refundDeadline, 
-                    uint refundAmountLOC) 
-        public 
-        onlyOwner
-        whenNotPaused
-        returns(bool success)
+    function reserve
+        (bytes32 bookingId, uint reservationCostLOC, address reserverAddress, uint refundDeadline, uint refundAmountLOC) 
+        public onlyOwner whenNotPaused returns(bool success) 
     {
 
         bookingIds.push(bookingId);
@@ -125,7 +123,9 @@ contract LockchainAlpha is Ownable, Pausable {
      * @dev called by the reserver to cancel his/her booking
      * @param bookingId - the identifier of the reservation
      */
-    function cancelBooking(bytes32 bookingId) onlyActive(bookingId) onlyReserver(bookingId) onlyBeforeDeadline(bookingId) public returns(bool) {
+    function cancelBooking(bytes32 bookingId) 
+        whenNotPaused onlyReserver(bookingId) onlyActive(bookingId) onlyBeforeDeadline(bookingId) public returns(bool) 
+    {
         uint locToBeRefunded = bookings[bookingId].refundAmountLOC;
         unlinkBooking(bookingId);
         require(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
@@ -136,8 +136,13 @@ contract LockchainAlpha is Ownable, Pausable {
      * @dev called by owner to make LOC withdrawal for this reservation
      * @param bookingId - the identifier of the reservation
      */
-    function withdraw(bytes32 bookingId) onlyActive(bookingId)  onlyAfterDeadline(bookingId) onlyOwner public {
-        // TODO
+    function withdraw(bytes32 bookingId) 
+        whenNotPaused onlyOwner onlyActive(bookingId) onlyAfterDeadline(bookingId) public returns(bool) 
+    {
+        uint locToBeWithdrawn = bookings[bookingId].costLOC;
+        unlinkBooking(bookingId);
+        require(LOCTokenContract.transfer(owner, locToBeWithdrawn));
+        return true;
     }
     
 }
