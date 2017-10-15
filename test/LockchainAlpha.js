@@ -24,7 +24,7 @@ contract('LockchainAlpha', function(accounts) {
     const _reservationBookingId = toBytes32("5a9d0e1a87");
     const _reservationBookingId2 = toBytes32("ba048590f44cbf0573f7a5a81a91b5e0623017a7");
 
-    xdescribe("constructor", () => {
+    describe("constructor", () => {
         beforeEach(async function() {
             ERC20Instance = await MintableToken.new({
                 from: _owner
@@ -46,7 +46,7 @@ contract('LockchainAlpha', function(accounts) {
 
     });
 
-    xdescribe("reserving correct amount", () => {
+    describe("reserving correct amount", () => {
 
         let reservationTimestamp;
 
@@ -181,7 +181,7 @@ contract('LockchainAlpha', function(accounts) {
 
     })
 
-    xdescribe("reserving without correct amount", () => {
+    describe("reserving without correct amount", () => {
         let reservationTimestamp;
 
         beforeEach(async function() {
@@ -216,7 +216,7 @@ contract('LockchainAlpha', function(accounts) {
         })
     })
 
-    xdescribe("canceling reservation", () => {
+    describe("canceling reservation", () => {
         let reservationTimestamp;
 
         beforeEach(async function() {
@@ -425,7 +425,7 @@ contract('LockchainAlpha', function(accounts) {
         });
     })
 
-    xdescribe("looping through tests", () => {
+    describe("looping through tests", () => {
         let shortReservationTimestamp;
         let longReservationTimestamp;
         beforeEach(async function() {
