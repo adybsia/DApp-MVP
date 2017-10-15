@@ -413,7 +413,7 @@ contract('LockchainAlpha', function(accounts) {
             }));
         });
 
-        it("should emit event on cancelation", async function() {
+        it("should emit event on withdrawal", async function() {
             await getTimeoutPromise(1);
 
             const expectedEvent = 'LogWithdrawal';
