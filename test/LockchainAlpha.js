@@ -24,7 +24,7 @@ contract('LockchainAlpha', function(accounts) {
     const _reservationBookingId = toBytes32("5a9d0e1a87");
     const _reservationBookingId2 = toBytes32("ba048590f44cbf0573f7a5a81a91b5e0623017a7");
 
-    describe("constructor", () => {
+    xdescribe("constructor", () => {
         beforeEach(async function() {
             ERC20Instance = await MintableToken.new({
                 from: _owner
@@ -46,7 +46,7 @@ contract('LockchainAlpha', function(accounts) {
 
     });
 
-    describe("reserving correct amount", () => {
+    xdescribe("reserving correct amount", () => {
 
         let reservationTimestamp;
 
@@ -181,7 +181,7 @@ contract('LockchainAlpha', function(accounts) {
 
     })
 
-    describe("reserving without correct amount", () => {
+    xdescribe("reserving without correct amount", () => {
         let reservationTimestamp;
 
         beforeEach(async function() {
@@ -216,7 +216,7 @@ contract('LockchainAlpha', function(accounts) {
         })
     })
 
-    describe("canceling reservation", () => {
+    xdescribe("canceling reservation", () => {
         let reservationTimestamp;
 
         beforeEach(async function() {
@@ -321,10 +321,157 @@ contract('LockchainAlpha', function(accounts) {
             let result = await LAInstance.cancelBooking(_reservationBookingId, {
                 from: _reserver
             });
-            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from reservation!");
+            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from cancelation!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
         });
 
+    })
+
+    describe("withdrawal tests", () => {
+        let reservationTimestamp;
+
+        beforeEach(async function() {
+            ERC20Instance = await MintableToken.new({
+                from: _owner
+            });
+            LAInstance = await LockchainAlpha.new(ERC20Instance.address, {
+                from: _owner
+            });
+            await ERC20Instance.mint(_reserver, _reserverAmountEnough, {
+                from: _owner
+            });
+            await ERC20Instance.approve(LAInstance.address, _reserverAmountEnough, {
+                from: _reserver
+            })
+            reservationTimestamp = getTimestampPlusSeconds(0);
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+        })
+
+        it("should make reservation inactive after withdrawal and make the count of reservations less", async function() {
+            let reservationsCountBefore = await LAInstance.reservationsCount.call();
+            await getTimeoutPromise(1);
+            await LAInstance.withdraw(_reservationBookingId, {
+                from: _owner
+            });
+
+            let result = await LAInstance.bookings.call(_reservationBookingId);
+
+            assert(result[5] == false, "The reservation was still active");
+
+            let reservationsCountAfter = await LAInstance.reservationsCount.call();
+
+            assert(reservationsCountAfter.eq(reservationsCountBefore.minus(1)), "The reservation count has not changed");
+        });
+
+        it("should send the money to the owner", async function() {
+            const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceBefore = await ERC20Instance.balanceOf.call(_owner);
+            await getTimeoutPromise(1);
+            await LAInstance.withdraw(_reservationBookingId, {
+                from: _owner
+            });
+            const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
+
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore), "The refunded amount was not correct");
+            assert(ownerBalanceAfter.eq(ownerBalanceBefore.plus(_reservationCost)), "The contract owner fee was not correct");
+        });
+
+        it("should throw if non owner tries to withdraw", async function() {
+            await getTimeoutPromise(1);
+            await expectThrow(LAInstance.withdraw(_reservationBookingId, {
+                from: _notOwner
+            }));
+        });
+
+        it("should throw if trying to withdraw when the contract is paused", async function() {
+            await LAInstance.pause({
+                from: _owner
+            });
+            await getTimeoutPromise(1);
+            await expectThrow(LAInstance.withdraw(_reservationBookingId, {
+                from: _owner
+            }));
+        });
+
+        it("should throw if trying to withdraw from inactive booking", async function() {
+            await getTimeoutPromise(1);
+            await expectThrow(LAInstance.withdraw(_reservationBookingId2, {
+                from: _owner
+            }));
+        });
+
+        it("should throw if trying to wihdraw before deadline", async function() {
+            reservationTimestamp = getTimestampPlusSeconds(20)
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _owner
+            });
+            await expectThrow(LAInstance.withdraw(_reservationBookingId2, {
+                from: _owner
+            }));
+        });
+
+        it("should emit event on cancelation", async function() {
+            await getTimeoutPromise(1);
+
+            const expectedEvent = 'LogWithdrawal';
+            let result = await LAInstance.withdraw(_reservationBookingId, {
+                from: _owner
+            });
+            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from withdrawal!");
+            assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
+        });
+    })
+
+    xdescribe("looping through tests", () => {
+        let shortReservationTimestamp;
+        let longReservationTimestamp;
+        beforeEach(async function() {
+            ERC20Instance = await MintableToken.new({
+                from: _owner
+            });
+            LAInstance = await LockchainAlpha.new(ERC20Instance.address, {
+                from: _owner
+            });
+            await ERC20Instance.mint(_reserver, _reserverAmountEnough, {
+                from: _owner
+            });
+            await ERC20Instance.approve(LAInstance.address, _reserverAmountEnough, {
+                from: _reserver
+            })
+            shortReservationTimestamp = getTimestampPlusSeconds(0);
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, shortReservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+            longReservationTimestamp = getTimestampPlusSeconds(30);
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, longReservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+        })
+
+        it("should find the completed reservation", async function() {
+            let reservationsCount = await LAInstance.reservationsCount.call();
+            reservationsCount = reservationsCount.toNumber();
+
+            await getTimeoutPromise(1);
+
+            const now = getTimestampPlusSeconds(0);
+
+            const result = new Array();
+
+            for (let i = 0; i < reservationsCount; i++) {
+                let reservationId = await LAInstance.bookingIds.call(i);
+                let reservation = await LAInstance.bookings.call(reservationId);
+                if (reservation[2].lte(now)) {
+                    result.push(reservationId);
+                }
+            }
+
+            assert.lengthOf(result, 1, "There should be 1 reservation found!");
+            assert.strictEqual(result[0], _reservationBookingId, "The wrong reservation was found");
+        })
     })
 
 });
