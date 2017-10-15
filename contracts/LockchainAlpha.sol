@@ -122,7 +122,7 @@ contract LockchainAlpha is Ownable, Pausable {
 
         bookingIds.push(bookingId);
 
-        assert(LOCTokenContract.transferFrom(reserverAddress, msg.sender, reservationCostLOC));
+        assert(LOCTokenContract.transferFrom(reserverAddress, this, reservationCostLOC));
 
         LogReservation(bookingId, reserverAddress, reservationCostLOC, refundDeadline, refundAmountLOC);
 
