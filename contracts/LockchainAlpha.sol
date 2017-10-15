@@ -79,6 +79,10 @@ contract LockchainAlpha is Ownable, Pausable {
         require(now > r.refundDeadline);
         _;
     }
+    
+    function reservationsCount() public constant returns(uint) {
+        return bookingIds.length;
+    }
 
     /**
      * @dev function to ensure complete unlinking of booking from the mapping and array
@@ -122,7 +126,7 @@ contract LockchainAlpha is Ownable, Pausable {
 
         bookingIds.push(bookingId);
 
-        assert(LOCTokenContract.transferFrom(reserverAddress, msg.sender, reservationCostLOC));
+        assert(LOCTokenContract.transferFrom(reserverAddress, this, reservationCostLOC));
 
         LogReservation(bookingId, reserverAddress, reservationCostLOC, refundDeadline, refundAmountLOC);
 
