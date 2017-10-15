@@ -3,6 +3,7 @@ const MintableToken = artifacts.require("./tokens/MintableToken.sol");
 const util = require('./util');
 const expectThrow = util.expectThrow;
 const getTimestampPlusSeconds = util.getTimestampPlusSeconds;
+const getTimeoutPromise = util.getTimeoutPromise;
 const toBytes32 = util.toBytes32;
 
 contract('LockchainAlpha', function(accounts) {
@@ -71,10 +72,17 @@ contract('LockchainAlpha', function(accounts) {
             });
 
             assert.isTrue(result, "The reservation was not successful");
+
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+
+            let reservationsCount = await LAInstance.reservationsCount.call();
+            assert(reservationsCount.eq(1), "The reservation count was not correct");
         })
 
         it("should make two reservations succesfully", async function() {
-            await LAInstance.reserve.call(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
                 from: _owner
             });
 
@@ -83,6 +91,13 @@ contract('LockchainAlpha', function(accounts) {
             });
 
             assert.isTrue(result, "The reservation was not successful");
+
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+
+            let reservationsCount = await LAInstance.reservationsCount.call();
+            assert(reservationsCount.eq(2), "The reservation count was not correct");
         })
 
         it("should set the values in a reservation correctly", async function() {
@@ -199,6 +214,117 @@ contract('LockchainAlpha', function(accounts) {
                 from: _owner
             }));
         })
+    })
+
+    describe("canceling reservation", () => {
+        let reservationTimestamp;
+
+        beforeEach(async function() {
+            ERC20Instance = await MintableToken.new({
+                from: _owner
+            });
+            LAInstance = await LockchainAlpha.new(ERC20Instance.address, {
+                from: _owner
+            });
+            await ERC20Instance.mint(_reserver, _reserverAmountEnough, {
+                from: _owner
+            });
+            await ERC20Instance.approve(LAInstance.address, _reserverAmountEnough, {
+                from: _reserver
+            })
+            reservationTimestamp = getTimestampPlusSeconds(30);
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _owner
+            });
+        })
+
+        it("should make reservation inactive after cancel and make the count of reservations less", async function() {
+            let reservationsCountBefore = await LAInstance.reservationsCount.call();
+
+            await LAInstance.cancelBooking(_reservationBookingId, {
+                from: _reserver
+            });
+
+            let result = await LAInstance.bookings.call(_reservationBookingId);
+
+            assert(result[5] == false, "The reservation was still active");
+
+            let reservationsCountAfter = await LAInstance.reservationsCount.call();
+
+            assert(reservationsCountAfter.eq(reservationsCountBefore.minus(1)), "The reservation count has not changed");
+        });
+
+        it("should refund money after cancel", async function() {
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _owner
+            });
+            const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceBefore = await ERC20Instance.balanceOf.call(_owner);
+            await LAInstance.cancelBooking(_reservationBookingId2, {
+                from: _reserver
+            });
+            const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
+
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountEqual)), "The refunded amount was not correct");
+            assert(ownerBalanceAfter.eq(ownerBalanceBefore), "The contract amount was changed but it should not");
+        });
+
+        it("should refund money and send rest to owner", async function() {
+            const ownerFee = _reservationCost - _reservationRefundAmountLess;
+            const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceBefore = await ERC20Instance.balanceOf.call(_owner);
+            await LAInstance.cancelBooking(_reservationBookingId, {
+                from: _reserver
+            });
+            const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
+
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountLess)), "The refunded amount was not correct");
+            assert(ownerBalanceAfter.eq(ownerBalanceBefore.plus(ownerFee)), "The contract owner fee was not correct");
+        });
+
+        it("should throw if non reserver tries to cancel", async function() {
+            await expectThrow(LAInstance.cancelBooking(_reservationBookingId, {
+                from: _notOwner
+            }));
+        });
+
+        it("should throw if trying to cancel when the contract is paused", async function() {
+            await LAInstance.pause({
+                from: _owner
+            });
+            await expectThrow(LAInstance.cancelBooking(_reservationBookingId, {
+                from: _reserver
+            }));
+        });
+
+        it("should throw if trying to cancel inactive booking", async function() {
+            await expectThrow(LAInstance.cancelBooking(_reservationBookingId2, {
+                from: _reserver
+            }));
+        });
+
+        it("should throw if trying to cancel after deadline", async function() {
+            reservationTimestamp = getTimestampPlusSeconds(1)
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _owner
+            });
+            await getTimeoutPromise(2);
+            await expectThrow(LAInstance.cancelBooking(_reservationBookingId2, {
+                from: _reserver
+            }));
+        });
+
+        it("should emit event on cancelation", async function() {
+            const expectedEvent = 'LogCancelation';
+            let result = await LAInstance.cancelBooking(_reservationBookingId, {
+                from: _reserver
+            });
+            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from reservation!");
+            assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
+        });
+
     })
 
 });
