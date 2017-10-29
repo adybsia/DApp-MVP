@@ -4,11 +4,14 @@ import './Ownable.sol';
 import './Pausable.sol';
 
 /**
- * @title LockchainAlpha
- * @dev Contract for the Alpha version of the Lockchain service. 
- * Allows for booking properties and withdrawal and refund of reservation
+ * @title LockchainOracle
+ * @dev Oracle for the LOC exchange rate
+ * Allows setting Wei to LOCwei rate
  */
 contract LockchainOracle is Ownable, Pausable {
+
+	bool public isLocOracle = true;
+
     uint public rate; // Wei(21 decimals) per LockWei(18 decimals)
 
 	event LogRateChanged(uint oldRate, uint newRate, address changer);
