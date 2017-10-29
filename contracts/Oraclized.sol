@@ -17,6 +17,8 @@ contract Oraclized is Ownable, Pausable {
 	function Oraclized(address initialOracle) public {
 		require(initialOracle != address(0x0));
 		LOCOracle = initialOracle;
+		LockchainOracle oracle = LockchainOracle(initialOracle);
+		require(oracle.isLocOracle());
 	}
 
 	modifier onlyOracle() {
@@ -26,6 +28,8 @@ contract Oraclized is Ownable, Pausable {
 
 	function setOracle(address newOracle) public onlyOwner whenNotPaused returns(bool) {
 		require(newOracle != address(0x0));
+		LockchainOracle oracle = LockchainOracle(newOracle);
+		require(oracle.isLocOracle());
 		address oldOracle = LOCOracle;
 		LOCOracle = newOracle;
 		LOGLOCOracleSet(oldOracle, newOracle, msg.sender);

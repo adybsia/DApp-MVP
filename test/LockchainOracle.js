@@ -30,6 +30,11 @@ contract('LockchainOracle', function(accounts) {
             assert(rate.eq(_initialRate), "The initial rate was not set correctly");
         });
 
+        it("should have been set as oracle", async function() {
+            const isOracle = await LOInstance.isLocOracle.call();
+            assert.isTrue(isOracle, "The initial rate was not set correctly");
+        });
+
     });
 
     describe("changing rate", () => {

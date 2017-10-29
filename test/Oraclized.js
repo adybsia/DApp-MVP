@@ -12,6 +12,7 @@ contract('Oraclized', function(accounts) {
     const _notOwner = accounts[1];
     const _oracle = accounts[2];
     const _newOracle = accounts[3];
+    const _notOracle = accounts[4];
 
     const _initialRate = 10000;
 
@@ -65,6 +66,12 @@ contract('Oraclized', function(accounts) {
                 from: _owner
             });
             await expectThrow(LEInstance.setOracle(newOracle.address, {
+                from: _owner
+            }));
+        });
+
+        it("should throw if non-oracle is set", async function() {
+            await expectThrow(LEInstance.setOracle(_notOracle, {
                 from: _owner
             }));
         });

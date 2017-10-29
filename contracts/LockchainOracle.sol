@@ -9,6 +9,9 @@ import './Pausable.sol';
  * Allows setting Wei to LOCwei rate
  */
 contract LockchainOracle is Ownable, Pausable {
+
+	bool public isLocOracle = true;
+
     uint public rate; // Wei(21 decimals) per LockWei(18 decimals)
 
 	event LogRateChanged(uint oldRate, uint newRate, address changer);
