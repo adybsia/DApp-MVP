@@ -8,7 +8,6 @@ contract('LockchainOracle', function(accounts) {
 
     const _owner = accounts[0];
     const _notOwner = accounts[1];
-    const _reserver = accounts[2];
 
     const _initialRate = 10000;
     const _newRate = 50000;

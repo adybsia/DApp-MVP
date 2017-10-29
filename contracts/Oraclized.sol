@@ -2,6 +2,7 @@ pragma solidity ^0.4.15;
 
 import './Ownable.sol';
 import './Pausable.sol';
+import './LockchainOracle.sol';
 
 /**
  * @title Oraclized
@@ -29,5 +30,9 @@ contract Oraclized is Ownable, Pausable {
 		LOCOracle = newOracle;
 		LOGLOCOracleSet(oldOracle, newOracle, msg.sender);
 		return true;
+	}
+
+	function weiToLocWei() public constant whenNotPaused returns(uint) {
+		return LockchainOracle(LOCOracle).rate();
 	}
 }
