@@ -13,8 +13,12 @@ contract('LOCExchange', function(accounts) {
     const _owner = accounts[0];
     const _notOwner = accounts[1];
 
-    const _initialRate = 2;
+    const _initialRate = 5000;
     const _weiAmount = 1000000000000000000;
+    const _weiAmountWithdraw = 500000000000000000;
+    const _locWeiAmount = 2000000000000000000;
+    const _locWeiAmountRounding = 2000000000000000333;
+    const _locWeiAmountWithdraw = 1000000000000000000;
     const _notOwnerLOCAmount = _weiAmount * _initialRate;
     const _ethForExchangeContract = 1;
     
@@ -74,6 +78,21 @@ contract('LOCExchange', function(accounts) {
             });
         });
 
+        it("should send eth to contract", async function() {
+            const contractBalance = await web3.eth.getBalance(LOCExchangeIntance.address);
+
+            web3.eth.sendTransaction({
+                from: _owner, 
+                to: LOCExchangeIntance.address, 
+                value: web3.toWei(_ethForExchangeContract, "ether")
+            });
+
+            const contractBalanceAfter = await web3.eth.getBalance(LOCExchangeIntance.address);
+            const neededBalance = contractBalance.plus(web3.toWei(_ethForExchangeContract, "ether"));
+
+            assert(contractBalanceAfter.eq(neededBalance), "The locWei amount is not correct!");
+        });
+
         it("should return corresponding amount in LocWei", async function() {
             const rate = await LOCExchangeIntance.rate();
 
@@ -81,8 +100,46 @@ contract('LOCExchange', function(accounts) {
                 from: _owner
             });
 
-            const expectedLocAmount = _weiAmount * rate;
+            const minWeiAmount = await LOCExchangeIntance.minWeiAmount();
+            const convertedWeiAmount = _weiAmount / minWeiAmount;
+            const expectedLocAmount = convertedWeiAmount * rate;
+
             assert(locWeiAmount.eq(expectedLocAmount), "The locWei amount is not correct!");
+        });
+
+        it("should return corresponding amount in Wei", async function() {
+            const rate = await LOCExchangeIntance.rate();
+            const minWeiAmount = await LOCExchangeIntance.minWeiAmount();
+
+            const weiAmount = await LOCExchangeIntance.locWeiToWei(_locWeiAmount, {
+                from: _owner
+            });
+
+            let expectedWeiAmount = _locWeiAmount / rate;
+            if (_locWeiAmount % rate) {
+                expectedWeiAmount++;
+            }
+
+            expectedWeiAmount *= minWeiAmount;
+
+            assert(weiAmount.eq(expectedWeiAmount), "The Wei amount is not correct!");
+        });
+
+        it("should return corresponding amount in Wei with rounding", async function() {
+            const rate = await LOCExchangeIntance.rate();
+            const minWeiAmount = await LOCExchangeIntance.minWeiAmount();
+            const weiAmount = await LOCExchangeIntance.locWeiToWei(_locWeiAmountRounding, {
+                from: _owner
+            });
+
+            let expectedWeiAmount = _locWeiAmountRounding / rate;
+            expectedWeiAmount = Math.round(expectedWeiAmount);
+            if (_locWeiAmountRounding % rate) {
+                expectedWeiAmount++;
+            }
+
+            expectedWeiAmount *= minWeiAmount;
+            assert(weiAmount.toString() == expectedWeiAmount, "The Wei rounded amount is not correct!");
         });
 
         it("should transfer ETH to caller address", async function() {
@@ -100,69 +157,70 @@ contract('LOCExchange', function(accounts) {
             
             let ethBalanceAfter = await web3.eth.getBalance(_notOwner);
             assert(ethBalanceAfter.gt(ethBalanceBefore), "Final account balance is not more than initial!");
-         });
+        });
 
-         it("should transfer LOC", async function() {
+        it("should transfer LOC", async function() {
             const locWeiAmount = await LOCExchangeIntance.weiToLocWei(_weiAmount, {
                 from: _notOwner
             });
             await ERC20Instance.approve(LOCExchangeIntance.address, locWeiAmount, {
                 from: _notOwner
             });
-            
             const locBalanceBeforeTransaction = await ERC20Instance.balanceOf(_notOwner);
-
             const ethSend = await LOCExchangeIntance.exchangeLocWeiToEthWei(locWeiAmount, {
                 from: _notOwner
             });
-
             const locBalanceAfterTransaction = await ERC20Instance.balanceOf(_notOwner);
             
-            assert(locBalanceBeforeTransaction.eq(locBalanceAfterTransaction + locWeiAmount),
+            assert(locBalanceBeforeTransaction.eq(locBalanceAfterTransaction.plus(locWeiAmount)),
                 "Final account balance is not correct!"
             );
-         });
+        });
 
-         it("should return Exchange contract LOC Balance ", async function() {
-            // TODO
-         });
-    //     it("should throw if non-owner tries to change", async function() {
-    //         await expectThrow(LockchainOracleInstance.setRate(_newRate, {
-    //             from: _notOwner
-    //         }));
-    //     });
+        it("should throw if trying to exchange amount lower then rate", async function() {
+            const rate = await LOCExchangeIntance.rate();
 
-    //     it("should emit event on change", async function() {
-    //         const expectedEvent = 'LogRateChanged';
-    //         let result = await LockchainOracleInstance.setRate(_newRate, {
-    //             from: _owner
-    //         });
-    //         assert.lengthOf(result.logs, 1, "There should be 1 event emitted from setRate!");
-    //         assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
-    //     });
-    // })
+            const locWeiAmount = await LOCExchangeIntance.weiToLocWei(rate - 100, {
+                from: _notOwner
+            });
+            await ERC20Instance.approve(LOCExchangeIntance.address, locWeiAmount, {
+                from: _notOwner
+            });
+            await expectThrow(LOCExchangeIntance.exchangeLocWeiToEthWei(rate - 100, {
+                from: _notOwner
+            }));
+        });
 
-    // describe("working with paused contract", () => {
-    //     beforeEach(async function() {
-    //         LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
-    //             from: _owner
-    //         });
-    //     })
+        it("should get correct LOC balance for contract", async function() {
+            await ERC20Instance.mint(LOCExchangeIntance.address, _locWeiAmount, {
+                from: _owner
+            });
+            const contractLocBalance = await LOCExchangeIntance.getLocBalance.call();
+            assert(contractLocBalance.eq(_locWeiAmount), "The contract LOC balance amount is not correct!");
+        });
 
-    //     it("should throw if try to get the rate of paused contract", async function() {
-    //         await LockchainOracleInstance.pause({
-    //             from: _owner
-    //         });
-    //         await expectThrow(LockchainOracleInstance.rate.call());
-    //     });
+        it("should send eth from contract to owner", async function() {
+            const ownerBalance = await web3.eth.getBalance(_owner);
+            await LOCExchangeIntance.withdrawETH(_weiAmountWithdraw);
+            const ownerBalanceAfter = await web3.eth.getBalance(_owner);
 
-    //     it("should throw if try to change the rate of paused contract", async function() {
-    //         await LockchainOracleInstance.pause({
-    //             from: _owner
-    //         });
-    //         await expectThrow(LockchainOracleInstance.setRate(_newRate, {
-    //             from: _owner
-    //         }));
-    //     });
+            assert(ownerBalanceAfter.gt(ownerBalance), "Final account balance is not more than initial!");
+        });
+
+        it("should throw if requested withdraw is more than balance", async function() {
+            await expectThrow(LOCExchangeIntance.withdrawETH(_weiAmount + 100));
+        });
+
+        it("should send LOC from contract to owner", async function() {
+            await ERC20Instance.mint(LOCExchangeIntance.address, _locWeiAmountWithdraw, {
+                from: _owner
+            });
+
+            const ownerBalance = await ERC20Instance.balanceOf(_owner);
+            await LOCExchangeIntance.withdrawLOC(_locWeiAmountWithdraw);
+            const ownerBalanceAfter = await ERC20Instance.balanceOf(_owner);
+            
+            assert(ownerBalanceAfter.eq(ownerBalance.plus(_locWeiAmountWithdraw)), "Final account balance is not correct!");
+        });
     });
 });

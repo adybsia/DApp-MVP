@@ -36,7 +36,11 @@ contract Oraclized is Ownable, Pausable {
 		return true;
 	}
 
-	function weiToLocWei() public constant whenNotPaused returns(uint) {
+	function rate() public constant whenNotPaused returns(uint) {
 		return LockchainOracle(LOCOracle).rate();
+	}
+
+	function minWeiAmount() public constant whenNotPaused returns(uint) {
+		return LockchainOracle(LOCOracle).minWeiAmount();
 	}
 }

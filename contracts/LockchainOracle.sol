@@ -12,9 +12,11 @@ contract LockchainOracle is Ownable, Pausable {
 
 	bool public isLocOracle = true;
 
-    uint public rate; // Wei(21 decimals) per LockWei(18 decimals)
+    uint public rate; // LockWei(18 decimals) per 1000 Wei(21 decimals)
+	uint public minWeiAmount = 1000; 
 
 	event LogRateChanged(uint oldRate, uint newRate, address changer);
+	event LogMinWeiAmountChanged(uint oldMinWeiAmount, uint newMinWeiAmount, address changer);
 
 	function LockchainOracle(uint initialRate) {
 		require(initialRate > 0);
@@ -31,6 +33,14 @@ contract LockchainOracle is Ownable, Pausable {
 		uint oldRate = rate;
 		rate = newRate;
 		LogRateChanged(oldRate, newRate, msg.sender);
+		return true;
+	}
+
+	function setMinWeiAmount(uint newMinWeiAmount) public onlyOwner whenNotPaused returns(bool) {
+		require(newMinWeiAmount > 0);
+		uint oldMinWeiAmount = minWeiAmount;
+		minWeiAmount = oldMinWeiAmount;
+		LogMinWeiAmountChanged(minWeiAmount, oldMinWeiAmount, msg.sender);
 		return true;
 	}
 }

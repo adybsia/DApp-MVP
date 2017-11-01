@@ -4,7 +4,7 @@ const expectThrow = util.expectThrow;
 
 contract('LockchainOracle', function(accounts) {
 
-    let LOInstance;
+    let LockchainOracleInstance;
 
     const _owner = accounts[0];
     const _notOwner = accounts[1];
@@ -15,24 +15,24 @@ contract('LockchainOracle', function(accounts) {
 
     describe("constructor", () => {
         beforeEach(async function() {
-            LOInstance = await LockchainOracle.new(_initialRate, {
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _owner
             });
         })
 
         it("should have set the owner of the contract", async function() {
-            const LOOwner = await LOInstance.owner.call();
-            assert.strictEqual(LOOwner, _owner, "The contract owner was not set correctly");
+            const LockchainOracleOwner = await LockchainOracleInstance.owner.call();
+            assert.strictEqual(LockchainOracleOwner, _owner, "The contract owner was not set correctly");
         });
 
         it("should have set the initial rate correctly", async function() {
-            const rate = await LOInstance.rate.call();
+            const rate = await LockchainOracleInstance.rate.call();
             assert(rate.eq(_initialRate), "The initial rate was not set correctly");
         });
 
         it("should have been set as oracle", async function() {
-            const isOracle = await LOInstance.isLocOracle.call();
-            assert.isTrue(isOracle, "The initial rate was not set correctly");
+            const isOracle = await LockchainOracleInstance.isLocOracle.call();
+            assert.isTrue(isOracle, "The initial oracle is not a real Oracle");
         });
 
     });
@@ -40,28 +40,28 @@ contract('LockchainOracle', function(accounts) {
     describe("changing rate", () => {
 
         beforeEach(async function() {
-            LOInstance = await LockchainOracle.new(_initialRate, {
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _owner
             });
         })
 
         it("should change the rate correctly", async function() {
-            await LOInstance.setRate(_newRate, {
+            await LockchainOracleInstance.setRate(_newRate, {
                 from: _owner
             });
-            const rate = await LOInstance.rate.call();
+            const rate = await LockchainOracleInstance.rate.call();
             assert(rate.eq(_newRate), "The initial rate was not set correctly");
         });
 
         it("should throw if non-owner tries to change", async function() {
-            await expectThrow(LOInstance.setRate(_newRate, {
+            await expectThrow(LockchainOracleInstance.setRate(_newRate, {
                 from: _notOwner
             }));
         });
 
         it("should emit event on change", async function() {
             const expectedEvent = 'LogRateChanged';
-            let result = await LOInstance.setRate(_newRate, {
+            let result = await LockchainOracleInstance.setRate(_newRate, {
                 from: _owner
             });
             assert.lengthOf(result.logs, 1, "There should be 1 event emitted from setRate!");
@@ -71,23 +71,23 @@ contract('LockchainOracle', function(accounts) {
 
     describe("working with paused contract", () => {
         beforeEach(async function() {
-            LOInstance = await LockchainOracle.new(_initialRate, {
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _owner
             });
         })
 
         it("should throw if try to get the rate of paused contract", async function() {
-            await LOInstance.pause({
+            await LockchainOracleInstance.pause({
                 from: _owner
             });
-            await expectThrow(LOInstance.rate.call());
+            await expectThrow(LockchainOracleInstance.rate.call());
         });
 
         it("should throw if try to change the rate of paused contract", async function() {
-            await LOInstance.pause({
+            await LockchainOracleInstance.pause({
                 from: _owner
             });
-            await expectThrow(LOInstance.setRate(_newRate, {
+            await expectThrow(LockchainOracleInstance.setRate(_newRate, {
                 from: _owner
             }));
         });
