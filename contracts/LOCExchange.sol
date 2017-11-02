@@ -88,7 +88,7 @@ contract LOCExchange is Ownable, Pausable, Destructible, Oraclized {
     /**
      * @dev Get the loc balance from the LOC token contract
      */
-    function getLocBalance() constant public returns(uint) {
+    function getLocBalance() constant public whenNotPaused returns(uint) {
        return LOCTokenContract.balanceOf(this);
     }
 

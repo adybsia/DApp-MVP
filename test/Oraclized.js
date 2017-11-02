@@ -1,5 +1,6 @@
 const LOCExchange = artifacts.require("./LOCExchange.sol");
 const LockchainOracle = artifacts.require("./LockchainOracle.sol");
+const MintableToken = artifacts.require("./tokens/MintableToken.sol");
 const util = require('./util');
 const expectThrow = util.expectThrow;
 
@@ -21,9 +22,14 @@ contract('Oraclized', function(accounts) {
             LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _oracle
             });
-            LOCExchangeInstance = await LOCExchange.new(LockchainOracleInstance.address, {
+            ERC20Instance = await MintableToken.new({
                 from: _owner
             });
+            LOCExchangeInstance = await LOCExchange.new(
+                LockchainOracleInstance.address, 
+                ERC20Instance.address, {
+                    from: _owner
+                });
         })
 
         it("should have set the oracle of the contract", async function() {
@@ -42,8 +48,13 @@ contract('Oraclized', function(accounts) {
             newOracle = await LockchainOracle.new(_initialRate, {
                 from: _newOracle
             });
-            LOCExchangeInstance = await LOCExchange.new(LockchainOracleInstance.address, {
+            ERC20Instance = await MintableToken.new({
                 from: _owner
+            });
+            LOCExchangeInstance = await LOCExchange.new(
+                LockchainOracleInstance.address, 
+                ERC20Instance.address, {
+                    from: _owner
             });
         })
 
@@ -91,8 +102,13 @@ contract('Oraclized', function(accounts) {
             LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _oracle
             });
-            LOCExchangeInstance = await LOCExchange.new(LockchainOracleInstance.address, {
+            ERC20Instance = await MintableToken.new({
                 from: _owner
+            });
+            LOCExchangeInstance = await LOCExchange.new(
+                LockchainOracleInstance.address, 
+                ERC20Instance.address, {
+                    from: _owner
             });
         })
 
@@ -110,6 +126,4 @@ contract('Oraclized', function(accounts) {
             await expectThrow(LOCExchangeInstance.rate.call());
         });
     })
-
-
 });

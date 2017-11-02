@@ -11,6 +11,7 @@ contract('LockchainOracle', function(accounts) {
 
     const _initialRate = 10000;
     const _newRate = 50000;
+    const _newMinWeiAmount = 2000;
 
 
     describe("constructor", () => {
@@ -38,12 +39,11 @@ contract('LockchainOracle', function(accounts) {
     });
 
     describe("changing rate", () => {
-
         beforeEach(async function() {
             LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
                 from: _owner
             });
-        })
+        });
 
         it("should change the rate correctly", async function() {
             await LockchainOracleInstance.setRate(_newRate, {
@@ -67,7 +67,38 @@ contract('LockchainOracle', function(accounts) {
             assert.lengthOf(result.logs, 1, "There should be 1 event emitted from setRate!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
         });
-    })
+    });
+
+    describe("changing minWeiAmount", () => {
+        beforeEach(async function() {
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
+                from: _owner
+            });
+        });
+
+        it("should change the minWeiAmount correctly", async function() {
+            await LockchainOracleInstance.setMinWeiAmount(_newMinWeiAmount, {
+                from: _owner
+            });
+            const minWeiAmount = await LockchainOracleInstance.minWeiAmount.call();
+            assert(minWeiAmount.eq(_newMinWeiAmount), "The initial minWeiAmount was not set correctly");
+        });
+
+        it("should throw if non-owner tries to change", async function() {
+            await expectThrow(LockchainOracleInstance.setMinWeiAmount(_newRate, {
+                from: _notOwner
+            }));
+        });
+
+        it("should emit event on change", async function() {
+            const expectedEvent = 'LogMinWeiAmountChanged';
+            let result = await LockchainOracleInstance.setMinWeiAmount(_newMinWeiAmount, {
+                from: _owner
+            });
+            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from setMinWeiAmount!");
+            assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
+        });
+    });
 
     describe("working with paused contract", () => {
         beforeEach(async function() {
@@ -91,8 +122,14 @@ contract('LockchainOracle', function(accounts) {
                 from: _owner
             }));
         });
+
+        it("should throw if try to change the minWeiAmount of paused contract", async function() {
+            await LockchainOracleInstance.pause({
+                from: _owner
+            });
+            await expectThrow(LockchainOracleInstance.setMinWeiAmount(_newMinWeiAmount, {
+                from: _owner
+            }));
+        });
     })
-
-
-
 });

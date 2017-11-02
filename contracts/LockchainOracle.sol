@@ -39,7 +39,7 @@ contract LockchainOracle is Ownable, Pausable {
 	function setMinWeiAmount(uint newMinWeiAmount) public onlyOwner whenNotPaused returns(bool) {
 		require(newMinWeiAmount > 0);
 		uint oldMinWeiAmount = minWeiAmount;
-		minWeiAmount = oldMinWeiAmount;
+		minWeiAmount = newMinWeiAmount;
 		LogMinWeiAmountChanged(minWeiAmount, oldMinWeiAmount, msg.sender);
 		return true;
 	}
