@@ -3,12 +3,10 @@ var LockchainOracle = artifacts.require("./LockchainOracle.sol");
 var LOCExchange = artifacts.require("./LOCExchange.sol");
 var MintableToken = artifacts.require("./tokens/MintableToken.sol");
 
-var environment = 'testrpc';
-
 module.exports = async function(deployer) {
     // Change accounts on deploy
-    let account1 = '0xd3521c853058981a15b04534a1cb0d0b9b23e085';
-    let account2 = '0x602ae3c5341d0285a3073ecd78d9be2f67d7556c';
+    let account1 = '';
+    let account2 = '';
 
     await deployer.deploy(MintableToken, {
         from: account1
