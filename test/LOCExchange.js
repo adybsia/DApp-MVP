@@ -24,6 +24,7 @@ contract('LOCExchange', function(accounts) {
 
     describe("creating contract", () => {
         it("should be able to deploy Lockchain Exchange Contract", async function() {
+            LOCExchangeIntance = undefined;
             ERC20Instance = await MintableToken.new({
                 from: _owner
             });
