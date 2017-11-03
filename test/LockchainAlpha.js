@@ -23,6 +23,18 @@ contract('LockchainAlpha', function(accounts) {
 
     const _reservationBookingId = toBytes32("5a9d0e1a87");
     const _reservationBookingId2 = toBytes32("ba048590f44cbf0573f7a5a81a91b5e0623017a7");
+    describe("creating contract", () => {
+        it("should be able to deploy Lockchain Alpha Contract", async function() {
+            LAInstance = undefined;
+            ERC20Instance = await MintableToken.new({
+                from: _owner
+            });
+            LAInstance = await LockchainAlpha.new(ERC20Instance.address, {
+                from: _owner
+            });
+            assert.isDefined(LAInstance, "Could not deploy Lockchain Alpha contract");
+        })
+    })
 
     describe("constructor", () => {
         beforeEach(async function() {
