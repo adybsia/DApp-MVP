@@ -2,7 +2,6 @@ const util = {
     expectThrow: async promise => {
         try {
             let result = await promise;
-            console.log(result);
         } catch (error) {
             const invalidJump = error.message.search('invalid JUMP') >= 0
             const invalidOpcode = error.message.search('invalid opcode') >= 0
@@ -32,6 +31,37 @@ const util = {
                 resolve()
             }, (secondsTimeout + 1) * 1000)
         })
+    },
+
+    getTransactionReceiptMined: async (txnHash, interval) => {
+        var transactionReceiptAsync;
+        interval = interval ? interval : 500;
+        transactionReceiptAsync = function(txnHash, resolve, reject) {
+            try {
+                var receipt = web3.eth.getTransactionReceipt(txnHash);
+                if (receipt == null) {
+                    setTimeout(function () {
+                        transactionReceiptAsync(txnHash, resolve, reject);
+                    }, interval);
+                } else {
+                    resolve(receipt);
+                }
+            } catch(e) {
+                reject(e);
+            }
+        };
+    
+        if (Array.isArray(txnHash)) {
+            var promises = [];
+            txnHash.forEach(function (oneTxHash) {
+                promises.push(this(oneTxHash, interval));
+            });
+            return Promise.all(promises);
+        } else {
+            return new Promise(function (resolve, reject) {
+                    transactionReceiptAsync(txnHash, resolve, reject);
+                });
+        }
     }
 }
 

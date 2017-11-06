@@ -123,7 +123,7 @@ contract('Oraclized', function(accounts) {
             await LOCExchangeInstance.pause({
                 from: _owner
             });
-            await expectThrow(LOCExchangeInstance.rate.call());
+            await util.expectThrow(LOCExchangeInstance.rate.call());
         });
     })
 });
