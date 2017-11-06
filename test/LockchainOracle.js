@@ -13,6 +13,15 @@ contract('LockchainOracle', function(accounts) {
     const _newRate = 50000;
     const _newMinWeiAmount = 2000;
 
+    describe("creating contract", () => {
+        it("should be able to deploy Lockchain Oracle Contract", async function() {
+            LockchainOracleInstance = undefined;
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
+                from: _owner
+            });
+            assert.isDefined(LockchainOracleInstance, "Could not deploy Lockchain Oracle contract");
+        })
+    })
 
     describe("constructor", () => {
         beforeEach(async function() {

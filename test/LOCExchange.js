@@ -9,7 +9,7 @@ contract('LOCExchange', function(accounts) {
     let LockchainOracleInstance;
     let LOCExchangeIntance;
     let ERC20Instance;
-    
+
     const _owner = accounts[0];
     const _notOwner = accounts[1];
 
@@ -21,7 +21,27 @@ contract('LOCExchange', function(accounts) {
     const _locWeiAmountWithdraw = 1000000000000000000;
     const _notOwnerLOCAmount = _weiAmount * _initialRate;
     const _ethForExchangeContract = 1;
-    
+
+    describe("creating contract", () => {
+        it("should be able to deploy Lockchain Exchange Contract", async function() {
+            LOCExchangeIntance = undefined;
+            ERC20Instance = await MintableToken.new({
+                from: _owner
+            });
+            LockchainOracleInstance = await LockchainOracle.new(_initialRate, {
+                from: _owner
+            });
+            LOCExchangeIntance = await LOCExchange.new(LockchainOracleInstance.address, ERC20Instance.address, {
+                from: _owner
+            });
+
+            await ERC20Instance.mint(_notOwner, _notOwnerLOCAmount, {
+                from: _owner
+            });
+            assert.isDefined(LOCExchangeIntance, "Could not deploy Lockchain Exchange contract");
+        })
+    })
+
     describe("constructor", () => {
         beforeEach(async function() {
             ERC20Instance = await MintableToken.new({
@@ -167,12 +187,12 @@ contract('LOCExchange', function(accounts) {
             await ERC20Instance.approve(LOCExchangeIntance.address, locWeiAmount, {
                 from: _notOwner
             });
-            
+
             const ethBalanceBefore = await web3.eth.getBalance(_notOwner);
             const ethSent = await LOCExchangeIntance.exchangeLocWeiToEthWei(locWeiAmount, {
                 from: _notOwner
             });
-            
+
             let ethBalanceAfter = await web3.eth.getBalance(_notOwner);
             assert(ethBalanceAfter.gt(ethBalanceBefore), "Final account balance is not more than initial!");
         });
@@ -189,7 +209,7 @@ contract('LOCExchange', function(accounts) {
                 from: _notOwner
             });
             const locBalanceAfterTransaction = await ERC20Instance.balanceOf(_notOwner);
-            
+
             assert(locBalanceBeforeTransaction.eq(locBalanceAfterTransaction.plus(locWeiAmount)),
                 "Final account balance is not correct!"
             );
@@ -197,7 +217,7 @@ contract('LOCExchange', function(accounts) {
 
         it("should emit event on exchange", async function() {
             const expectedEvent = 'LogLocExchanged';
-            
+
             const locWeiAmount = await LOCExchangeIntance.weiToLocWei(_weiAmount, {
                 from: _notOwner
             });
@@ -253,7 +273,7 @@ contract('LOCExchange', function(accounts) {
             assert.lengthOf(result.logs, 1, "There should be 1 event emitted from withdrawETH!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
         });
-        
+
         it("should send LOC from contract to owner", async function() {
             await ERC20Instance.mint(LOCExchangeIntance.address, _locWeiAmountWithdraw, {
                 from: _owner
@@ -262,7 +282,7 @@ contract('LOCExchange', function(accounts) {
             const ownerBalance = await ERC20Instance.balanceOf(_owner);
             await LOCExchangeIntance.withdrawLOC(_locWeiAmountWithdraw);
             const ownerBalanceAfter = await ERC20Instance.balanceOf(_owner);
-            
+
             assert(ownerBalanceAfter.eq(ownerBalance.plus(_locWeiAmountWithdraw)), "Final account balance is not correct!");
         });
 
@@ -312,7 +332,7 @@ contract('LOCExchange', function(accounts) {
                 from: _owner
             }));
         });
-        
+
         it("should throw if try to exchange LocWei to Wei when contract is paused", async function() {
             await expectThrow(LOCExchangeIntance.exchangeLocWeiToEthWei(_locWeiAmount, {
                 from: _notOwner
