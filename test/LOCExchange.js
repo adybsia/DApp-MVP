@@ -94,17 +94,16 @@ contract('LOCExchange', function(accounts) {
 
         it("should send eth to contract", async function() {
             const contractBalance = await web3.eth.getBalance(LOCExchangeIntance.address);
-
-            web3.eth.sendTransaction({
-                from: _owner,
-                to: LOCExchangeIntance.address,
+            const txnHash = await web3.eth.sendTransaction({
+                from: _owner, 
+                to: LOCExchangeIntance.address, 
                 value: web3.toWei(_ethForExchangeContract, "ether")
             });
-
+            await util.getTransactionReceiptMined(txnHash);
             const contractBalanceAfter = await web3.eth.getBalance(LOCExchangeIntance.address);
             const neededBalance = contractBalance.plus(web3.toWei(_ethForExchangeContract, "ether"));
-
-            assert(contractBalanceAfter.eq(neededBalance), "The locWei amount is not correct!");
+            
+            assert(contractBalanceAfter.eq(neededBalance), "The contract ETH balance is not correct!");
         });
     });
 
@@ -120,11 +119,12 @@ contract('LOCExchange', function(accounts) {
                 from: _owner
             });
 
-            web3.eth.sendTransaction({
-                from: _owner,
-                to: LOCExchangeIntance.address,
+            const txnHash = await web3.eth.sendTransaction({
+                from: _owner, 
+                to: LOCExchangeIntance.address, 
                 value: web3.toWei(_ethForExchangeContract, "ether")
             });
+            await util.getTransactionReceiptMined(txnHash);
 
             await ERC20Instance.mint(_notOwner, _notOwnerLOCAmount, {
                 from: _owner
@@ -300,7 +300,7 @@ contract('LOCExchange', function(accounts) {
 
             const result = await LOCExchangeIntance.withdrawLOC(_locWeiAmountWithdraw);
 
-            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from withdrawETH!");
+            assert.lengthOf(result.logs, 1, "There should be 1 event emitted from withdrawLOC!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
         });
     });
