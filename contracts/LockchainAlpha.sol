@@ -104,19 +104,18 @@ contract LockchainAlpha is Ownable, Pausable {
      * @notice the reservator has to approve enough allowance before calling this
      * @param bookingId - the identifier of the reservation
      * @param reservationCostLOC - the cost of the reservation
-     * @param reserverAddress - who is reserving the property
      * @param refundDeadline - the last date the user can ask for refund
      * @param refundAmountLOC - how many tokens the refund is
      */
     function reserve
-        (bytes32 bookingId, uint reservationCostLOC, address reserverAddress, uint refundDeadline, uint refundAmountLOC) 
-        public onlyOwner whenNotPaused returns(bool success) 
+        (bytes32 bookingId, uint reservationCostLOC, uint refundDeadline, uint refundAmountLOC) 
+        public whenNotPaused returns(bool success) 
     {
         require(now < refundDeadline);
         require(!bookings[bookingId].isActive);
 
         bookings[bookingId] = Reservation({
-            reserverAddress: reserverAddress,
+            reserverAddress: msg.sender,
             costLOC: reservationCostLOC,
             refundDeadline: refundDeadline,
             refundAmountLOC: refundAmountLOC,
@@ -126,9 +125,9 @@ contract LockchainAlpha is Ownable, Pausable {
 
         bookingIds.push(bookingId);
 
-        assert(LOCTokenContract.transferFrom(reserverAddress, this, reservationCostLOC));
+        assert(LOCTokenContract.transferFrom(msg.sender, this, reservationCostLOC));
 
-        LogReservation(bookingId, reserverAddress, reservationCostLOC, refundDeadline, refundAmountLOC);
+        LogReservation(bookingId, msg.sender, reservationCostLOC, refundDeadline, refundAmountLOC);
 
         return true;
     }

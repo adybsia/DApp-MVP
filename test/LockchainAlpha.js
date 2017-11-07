@@ -23,6 +23,7 @@ contract('LockchainAlpha', function(accounts) {
 
     const _reservationBookingId = toBytes32("5a9d0e1a87");
     const _reservationBookingId2 = toBytes32("ba048590f44cbf0573f7a5a81a91b5e0623017a7");
+
     describe("creating contract", () => {
         it("should be able to deploy Lockchain Alpha Contract", async function() {
             LAInstance = undefined;
@@ -79,14 +80,14 @@ contract('LockchainAlpha', function(accounts) {
         })
 
         it("should make reservation succesfully", async function() {
-            let result = await LAInstance.reserve.call(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            let result = await LAInstance.reserve.call(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
             assert.isTrue(result, "The reservation was not successful");
 
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
             let reservationsCount = await LAInstance.reservationsCount.call();
@@ -94,18 +95,18 @@ contract('LockchainAlpha', function(accounts) {
         })
 
         it("should make two reservations succesfully", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
-            let result = await LAInstance.reserve.call(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            let result = await LAInstance.reserve.call(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
             assert.isTrue(result, "The reservation was not successful");
 
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
             let reservationsCount = await LAInstance.reservationsCount.call();
@@ -113,8 +114,8 @@ contract('LockchainAlpha', function(accounts) {
         })
 
         it("should set the values in a reservation correctly", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
             let result = await LAInstance.bookings.call(_reservationBookingId);
             assert.strictEqual(result[0], _reserver, "The reserver was not set correctly");
@@ -126,8 +127,8 @@ contract('LockchainAlpha', function(accounts) {
         })
 
         it("should append to the indexes array and set the last element correctly", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
             let result = await LAInstance.bookings.call(_reservationBookingId);
             let result1 = await LAInstance.bookingIds.call(0);
@@ -140,8 +141,8 @@ contract('LockchainAlpha', function(accounts) {
         it("should change the LOC balances correctly", async function() {
             const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
             const contractBalanceBefore = await ERC20Instance.balanceOf.call(LAInstance.address);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
 
             const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
@@ -151,40 +152,34 @@ contract('LockchainAlpha', function(accounts) {
             assert(contractBalanceAfter.eq(contractBalanceBefore.plus(_reservationCost)), "The contract balance was not correct");
         })
 
-        it("should throw if non-owner tries to reserve", async function() {
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _notOwner
-            }));
-        })
-
         it("should throw if trying to reserve when paused", async function() {
             await LAInstance.pause({
                 from: _owner
             });
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             }));
         })
         it("should throw if the deadline is in the past", async function() {
             const pastDeadline = getTimestampPlusSeconds(-10);
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, pastDeadline, _reservationRefundAmountLess, {
-                from: _owner
+            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, pastDeadline, _reservationRefundAmountLess, {
+                from: _reserver
             }));
         })
         it("should throw if the same booking id is used twice", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             }));
         })
 
 
         it("should emit event on reservation", async function() {
             const expectedEvent = 'LogReservation';
-            let result = await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            let result = await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
             assert.lengthOf(result.logs, 1, "There should be 1 event emitted from reservation!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
@@ -213,8 +208,8 @@ contract('LockchainAlpha', function(accounts) {
             await ERC20Instance.approve(LAInstance.address, _reserverAmountNotEnough, {
                 from: _reserver
             })
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             }));
         })
 
@@ -222,8 +217,8 @@ contract('LockchainAlpha', function(accounts) {
             await ERC20Instance.approve(LAInstance.address, _reserverAmountEnough, {
                 from: _reserver
             })
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost * 3, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost * 3, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             }));
         })
     })
@@ -245,8 +240,8 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             reservationTimestamp = getTimestampPlusSeconds(30);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
         })
 
@@ -267,8 +262,8 @@ contract('LockchainAlpha', function(accounts) {
         });
 
         it("should refund money after cancel", async function() {
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _reserver
             });
             const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
             const ownerBalanceBefore = await ERC20Instance.balanceOf.call(_owner);
@@ -319,8 +314,8 @@ contract('LockchainAlpha', function(accounts) {
 
         it("should throw if trying to cancel after deadline", async function() {
             reservationTimestamp = getTimestampPlusSeconds(1)
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _reserver
             });
             await getTimeoutPromise(2);
             await expectThrow(LAInstance.cancelBooking(_reservationBookingId2, {
@@ -356,8 +351,8 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             reservationTimestamp = getTimestampPlusSeconds(0);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
         })
 
@@ -417,8 +412,8 @@ contract('LockchainAlpha', function(accounts) {
 
         it("should throw if trying to wihdraw before deadline", async function() {
             reservationTimestamp = getTimestampPlusSeconds(20)
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, reservationTimestamp, _reservationRefundAmountEqual, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+                from: _reserver
             });
             await expectThrow(LAInstance.withdraw(_reservationBookingId2, {
                 from: _owner
@@ -454,12 +449,12 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             shortReservationTimestamp = getTimestampPlusSeconds(0);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, _reserver, shortReservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId, _reservationCost, shortReservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
             longReservationTimestamp = getTimestampPlusSeconds(30);
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, _reserver, longReservationTimestamp, _reservationRefundAmountLess, {
-                from: _owner
+            await LAInstance.reserve(_reservationBookingId2, _reservationCost, longReservationTimestamp, _reservationRefundAmountLess, {
+                from: _reserver
             });
         })
 
