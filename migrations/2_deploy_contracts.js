@@ -5,21 +5,21 @@ var MintableToken = artifacts.require("./tokens/MintableToken.sol");
 
 module.exports = async function(deployer) {
     // Change accounts on deploy
-    let account1 = '0xd187023249748c894B61eE78E8B47570493dD357';
-    let account2 = '0x6039F021F638A74fBBefdE70D4Ac319665c694bD';
+    let account1 = '0x6039F021F638A74fBBefdE70D4Ac319665c694bD';
+    let account2 = '0x9bF528C355c83cC5a7153bCFE6cdCD8E321072FD';
     let LAInstance;
     let ERC20Instance;
     let LOInstance;
 
-    await deployer.deploy(MintableToken);    // ropsten - 0xd6e3ad737ac0c0cebbe302d20ed8c6dd00219dff
+    await deployer.deploy(MintableToken);    // ropsten - 0x13eaf683916c66b232ff5b823d65ffb54512ae7a
 
     ERC20Instance = await MintableToken.deployed();
-    await deployer.deploy(LockchainAlpha, ERC20Instance.address);    // ropsten - 0xc09c3ea5967386dfec804f25b0884b6327a006a6
+    await deployer.deploy(LockchainAlpha, ERC20Instance.address);    // ropsten - 0xaef24dbcafefbe6142ef7b6e7d55785894c2ea98
     LAInstance = await LockchainAlpha.deployed();
-    await deployer.deploy(LockchainOracle, 5000);    // ropsten - 0xe4953584cc8f2c65866858cb61c481536fdfb189
+    await deployer.deploy(LockchainOracle, 5000);    // ropsten - 0x5c02c5f921307d9151052e48e9f20aada2422edd
     LOInstance = await LockchainOracle.deployed();
     
-    await deployer.deploy(LOCExchange, LOInstance.address, ERC20Instance.address);    // ropsten - 0xd596aff1b6d05ed89e3362101be199ebc12b0217
+    await deployer.deploy(LOCExchange, LOInstance.address, ERC20Instance.address);    // ropsten - 0x13615ed1479b61751ce56189839f3a126e3847a9
 
     await ERC20Instance.mint(account1, 200000000000000000000000);
     await ERC20Instance.mint(account2, 200000000000000000000000);
