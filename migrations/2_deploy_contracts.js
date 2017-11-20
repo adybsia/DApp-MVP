@@ -5,8 +5,8 @@ var MintableToken = artifacts.require("./tokens/MintableToken.sol");
 
 module.exports = async function(deployer) {
     // Change accounts on deploy
-    let account1 = '0xd187023249748c894B61eE78E8B47570493dD357';
-    let account2 = '0x6039F021F638A74fBBefdE70D4Ac319665c694bD';
+    let account1 = '0xa65b890e61047a3e04dd533817817dafb3e2384b';
+    let account2 = '0x0b4822b88652fd2925c499618e3bb4d1507cd784';
     let LAInstance;
     let ERC20Instance;
     let LOInstance;
