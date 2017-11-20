@@ -13,15 +13,16 @@ import './math/SafeMath.sol';
 contract LockchainAlpha is Ownable, Pausable {
     using SafeMath for uint256;
 
-    event LogReservation(bytes32 bookingId, address reserverAddress, uint costLOC, uint refundDeadline, uint refundAmountLOC);
+    event LogReservation(bytes32 bookingId, address reserverAddress, uint costLOC, uint refundDeadline, uint refundAmountLOC, uint securityDepositLOC);
     event LogCancelation(bytes32 bookingId, address reserverAddress, uint refundedAmountLOC);
-    event LogWithdrawal(bytes32 bookingId, uint withdrawAmountLOC);
+    event LogWithdrawal(bytes32 bookingId, uint withdrawAmountLOC, uint securityDeposit);
 
     struct Reservation {
         address reserverAddress;
         uint costLOC;
         uint refundDeadline;
         uint refundAmountLOC;
+        uint securityDepositLOC;
         uint bookingArrayIndex;
         bool isActive;
     }
@@ -108,7 +109,7 @@ contract LockchainAlpha is Ownable, Pausable {
      * @param refundAmountLOC - how many tokens the refund is
      */
     function reserve
-        (bytes32 bookingId, uint reservationCostLOC, uint refundDeadline, uint refundAmountLOC) 
+        (bytes32 bookingId, uint reservationCostLOC, uint refundDeadline, uint refundAmountLOC, uint securityDepositLOC) 
         public whenNotPaused returns(bool success) 
     {
         require(now < refundDeadline);
@@ -119,15 +120,16 @@ contract LockchainAlpha is Ownable, Pausable {
             costLOC: reservationCostLOC,
             refundDeadline: refundDeadline,
             refundAmountLOC: refundAmountLOC,
+            securityDepositLOC: securityDepositLOC,
             bookingArrayIndex: bookingIds.length,
             isActive: true
         });
 
         bookingIds.push(bookingId);
 
-        assert(LOCTokenContract.transferFrom(msg.sender, this, reservationCostLOC));
+        assert(LOCTokenContract.transferFrom(msg.sender, this, (reservationCostLOC + securityDepositLOC)));
 
-        LogReservation(bookingId, msg.sender, reservationCostLOC, refundDeadline, refundAmountLOC);
+        LogReservation(bookingId, msg.sender, reservationCostLOC, refundDeadline, refundAmountLOC, securityDepositLOC);
 
         return true;
     }
@@ -139,8 +141,9 @@ contract LockchainAlpha is Ownable, Pausable {
     function cancelBooking(bytes32 bookingId) 
         whenNotPaused onlyReserver(bookingId) onlyActive(bookingId) onlyBeforeDeadline(bookingId) public returns(bool) 
     {
-        uint locToBeRefunded = bookings[bookingId].refundAmountLOC;
-        uint serviceFee = bookings[bookingId].costLOC.sub(locToBeRefunded);
+        uint locToBeRefunded = bookings[bookingId].refundAmountLOC + bookings[bookingId].securityDepositLOC;
+        uint serviceFee = bookings[bookingId].costLOC.sub(bookings[bookingId].refundAmountLOC);
+
         unlinkBooking(bookingId);
         assert(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, locToBeRefunded));
         if (serviceFee > 0) {
@@ -160,7 +163,8 @@ contract LockchainAlpha is Ownable, Pausable {
         uint locToBeWithdrawn = bookings[bookingId].costLOC;
         unlinkBooking(bookingId);
         assert(LOCTokenContract.transfer(owner, locToBeWithdrawn));
-        LogWithdrawal(bookingId, locToBeWithdrawn);
+        assert(LOCTokenContract.transfer(bookings[bookingId].reserverAddress, bookings[bookingId].securityDepositLOC));
+        LogWithdrawal(bookingId, locToBeWithdrawn, bookings[bookingId].securityDepositLOC);
         return true;
     }
     
