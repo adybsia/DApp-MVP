@@ -18,11 +18,13 @@ contract('LockchainAlpha', function(accounts) {
     const _reservationCost = 50;
     const _reservationRefundAmountLess = _reservationCost - 10;
     const _reservationRefundAmountEqual = _reservationCost;
-    const _reserverAmountEnough = _reservationCost * 2;
+    const _reserverDeposit = _reservationCost / 5;    
+    const _reservationTotalCost = _reservationCost + _reserverDeposit;
+    const _reserverAmountEnough = _reservationTotalCost * 2;
     const _reserverAmountNotEnough = _reservationCost / 2;
 
     const _reservationBookingId = toBytes32("5a9d0e1a87");
-    const _reservationBookingId2 = toBytes32("ba048590f44cbf0573f7a5a81a91b5e0623017a7");
+    const _reservationBookingId2 = toBytes32("5a9d0e1a88");
 
     describe("creating contract", () => {
         it("should be able to deploy Lockchain Alpha Contract", async function() {
@@ -54,6 +56,7 @@ contract('LockchainAlpha', function(accounts) {
 
         it("should have set the token contract", async function() {
             const LAERC20Address = await LAInstance.LOCTokenContract.call();
+            console.log(LAERC20Address);
             assert.strictEqual(LAERC20Address, ERC20Instance.address, "The token contract was not set correctly");
         });
 
@@ -80,60 +83,83 @@ contract('LockchainAlpha', function(accounts) {
         })
 
         it("should make reservation succesfully", async function() {
-            let result = await LAInstance.reserve.call(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            let result = await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
 
-            assert.isTrue(result, "The reservation was not successful");
-
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _reserver
-            });
+            assert.isTrue(Boolean(result.receipt.status), "The reservation was not successful");
 
             let reservationsCount = await LAInstance.reservationsCount.call();
             assert(reservationsCount.eq(1), "The reservation count was not correct");
         })
 
         it("should make two reservations succesfully", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            let result1 = await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
 
-            let result = await LAInstance.reserve.call(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            assert.isTrue(Boolean(result1.receipt.status), "The reservation was not successful");
+
+            let result2 = await LAInstance.reserve(
+                _reservationBookingId2, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
-
-            assert.isTrue(result, "The reservation was not successful");
-
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _reserver
-            });
+            
+            assert.isTrue(Boolean(result2.receipt.status), "The reservation was not successful");
 
             let reservationsCount = await LAInstance.reservationsCount.call();
             assert(reservationsCount.eq(2), "The reservation count was not correct");
         })
 
         it("should set the values in a reservation correctly", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
+
             let result = await LAInstance.bookings.call(_reservationBookingId);
             assert.strictEqual(result[0], _reserver, "The reserver was not set correctly");
             assert(result[1].eq(_reservationCost), "The cost was not set correctly");
             assert(result[2].eq(reservationTimestamp), "The deadline was not set correctly");
             assert(result[3].eq(_reservationRefundAmountLess), "The refund amount was not set correctly");
-            assert(result[4].eq(0), "The index array was not set correctly");
-            assert.isTrue(result[5], "The reservation was not active");
+            assert(result[4].eq(_reserverDeposit), "The deposit amount was not set correctly");
+            assert(result[5].eq(0), "The index array was not set correctly");
+            assert.isTrue(result[6], "The reservation was not active");
         })
 
         it("should append to the indexes array and set the last element correctly", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
+
             let result = await LAInstance.bookings.call(_reservationBookingId);
-            let result1 = await LAInstance.bookingIds.call(0);
+            let result1 = await LAInstance.bookingIds.call(0);            
             assert.strictEqual(result1, _reservationBookingId, "The reservation index was not set correctly");
-            let result2 = await LAInstance.bookingIds.call(result[4].toNumber());
+            let result2 = await LAInstance.bookingIds.call(result[5].toNumber());
+            
             assert.strictEqual(result2, _reservationBookingId, "The reservation index was not set correctly");
 
         })
@@ -141,51 +167,81 @@ contract('LockchainAlpha', function(accounts) {
         it("should change the LOC balances correctly", async function() {
             const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
             const contractBalanceBefore = await ERC20Instance.balanceOf.call(LAInstance.address);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
 
             const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
             const contractBalanceAfter = await ERC20Instance.balanceOf.call(LAInstance.address);
 
-            assert(reserverBalanceAfter.eq(reserverBalanceBefore.minus(_reservationCost)), "The reserver balance was not correct");
-            assert(contractBalanceAfter.eq(contractBalanceBefore.plus(_reservationCost)), "The contract balance was not correct");
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.minus(_reservationTotalCost)), "The reserver balance was not correct");
+            assert(contractBalanceAfter.eq(contractBalanceBefore.plus(_reservationTotalCost)), "The contract balance was not correct");
         })
 
         it("should throw if trying to reserve when paused", async function() {
             await LAInstance.pause({
                 from: _owner
             });
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _reserver
-            }));
-        })
-        it("should throw if the deadline is in the past", async function() {
-            const pastDeadline = getTimestampPlusSeconds(-10);
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, pastDeadline, _reservationRefundAmountLess, {
-                from: _reserver
-            }));
-        })
-        it("should throw if the same booking id is used twice", async function() {
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
-                from: _reserver
-            });
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await expectThrow(LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             }));
         })
 
+        it("should throw if the deadline is in the past", async function() {
+            const pastDeadline = getTimestampPlusSeconds(-10);
+            await expectThrow(LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                pastDeadline, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
+                from: _reserver
+            }));
+        })
+
+        it("should throw if the same booking id is used twice", async function() {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
+                from: _reserver
+            });
+
+            await expectThrow(LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
+                from: _reserver
+            }));
+        })
 
         it("should emit event on reservation", async function() {
             const expectedEvent = 'LogReservation';
-            let result = await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            let result = await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
             assert.lengthOf(result.logs, 1, "There should be 1 event emitted from reservation!");
             assert.strictEqual(result.logs[0].event, expectedEvent, `The event emitted was ${result.logs[0].event} instead of ${expectedEvent}`);
         });
-
-
     })
 
     describe("reserving without correct amount", () => {
@@ -208,7 +264,12 @@ contract('LockchainAlpha', function(accounts) {
             await ERC20Instance.approve(LAInstance.address, _reserverAmountNotEnough, {
                 from: _reserver
             })
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await expectThrow(LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost,
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             }));
         })
@@ -217,7 +278,12 @@ contract('LockchainAlpha', function(accounts) {
             await ERC20Instance.approve(LAInstance.address, _reserverAmountEnough, {
                 from: _reserver
             })
-            await expectThrow(LAInstance.reserve(_reservationBookingId, _reservationCost * 3, reservationTimestamp, _reservationRefundAmountLess, {
+            await expectThrow(LAInstance.reserve(
+                _reservationBookingId,
+                _reservationCost * 3, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess, 
+                _reserverDeposit, {
                 from: _reserver
             }));
         })
@@ -240,7 +306,12 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             reservationTimestamp = getTimestampPlusSeconds(30);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess, 
+                _reserverDeposit, {
                 from: _reserver
             });
         })
@@ -262,7 +333,12 @@ contract('LockchainAlpha', function(accounts) {
         });
 
         it("should refund money after cancel", async function() {
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+            await LAInstance.reserve(
+                _reservationBookingId2, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountEqual, 
+                _reserverDeposit, {
                 from: _reserver
             });
             const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
@@ -273,7 +349,7 @@ contract('LockchainAlpha', function(accounts) {
             const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
             const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
 
-            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountEqual)), "The refunded amount was not correct");
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountEqual + _reserverDeposit)), "The refunded amount was not correct");
             assert(ownerBalanceAfter.eq(ownerBalanceBefore), "The contract amount was changed but it should not");
         });
 
@@ -287,7 +363,7 @@ contract('LockchainAlpha', function(accounts) {
             const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
             const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
 
-            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountLess)), "The refunded amount was not correct");
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reservationRefundAmountLess + _reserverDeposit)), "The refunded amount was not correct");
             assert(ownerBalanceAfter.eq(ownerBalanceBefore.plus(ownerFee)), "The contract owner fee was not correct");
         });
 
@@ -314,7 +390,12 @@ contract('LockchainAlpha', function(accounts) {
 
         it("should throw if trying to cancel after deadline", async function() {
             reservationTimestamp = getTimestampPlusSeconds(1)
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+            await LAInstance.reserve(
+                _reservationBookingId2, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountEqual, 
+                _reserverDeposit, {
                 from: _reserver
             });
             await getTimeoutPromise(2);
@@ -351,7 +432,12 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             reservationTimestamp = getTimestampPlusSeconds(0);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, reservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountLess,
+                _reserverDeposit, {
                 from: _reserver
             });
         })
@@ -382,8 +468,21 @@ contract('LockchainAlpha', function(accounts) {
             const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
             const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
 
-            assert(reserverBalanceAfter.eq(reserverBalanceBefore), "The refunded amount was not correct");
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reserverDeposit)), "The refunded amount was not correct");
             assert(ownerBalanceAfter.eq(ownerBalanceBefore.plus(_reservationCost)), "The contract owner fee was not correct");
+        });
+
+        it("should send deposit back to the reserver", async function() {
+            const reserverBalanceBefore = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceBefore = await ERC20Instance.balanceOf.call(_owner);
+            await getTimeoutPromise(1);
+            await LAInstance.withdraw(_reservationBookingId, {
+                from: _owner
+            });
+            const reserverBalanceAfter = await ERC20Instance.balanceOf.call(_reserver);
+            const ownerBalanceAfter = await ERC20Instance.balanceOf.call(_owner);
+
+            assert(reserverBalanceAfter.eq(reserverBalanceBefore.plus(_reserverDeposit)), "The refunded amount was not correct");
         });
 
         it("should throw if non owner tries to withdraw", async function() {
@@ -412,7 +511,12 @@ contract('LockchainAlpha', function(accounts) {
 
         it("should throw if trying to wihdraw before deadline", async function() {
             reservationTimestamp = getTimestampPlusSeconds(20)
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, reservationTimestamp, _reservationRefundAmountEqual, {
+            await LAInstance.reserve(
+                _reservationBookingId2,
+                _reservationCost, 
+                reservationTimestamp, 
+                _reservationRefundAmountEqual, 
+                _reserverDeposit, {
                 from: _reserver
             });
             await expectThrow(LAInstance.withdraw(_reservationBookingId2, {
@@ -449,11 +553,20 @@ contract('LockchainAlpha', function(accounts) {
                 from: _reserver
             })
             shortReservationTimestamp = getTimestampPlusSeconds(0);
-            await LAInstance.reserve(_reservationBookingId, _reservationCost, shortReservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(
+                _reservationBookingId, 
+                _reservationCost, 
+                shortReservationTimestamp, 
+                _reservationRefundAmountLess, 
+                _reserverDeposit, {
                 from: _reserver
             });
             longReservationTimestamp = getTimestampPlusSeconds(30);
-            await LAInstance.reserve(_reservationBookingId2, _reservationCost, longReservationTimestamp, _reservationRefundAmountLess, {
+            await LAInstance.reserve(_reservationBookingId2, 
+                _reservationCost, 
+                longReservationTimestamp, 
+                _reservationRefundAmountLess, 
+                _reserverDeposit, {
                 from: _reserver
             });
         })
